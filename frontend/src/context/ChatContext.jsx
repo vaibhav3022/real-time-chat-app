@@ -55,7 +55,7 @@ export const ChatProvider = ({ children }) => {
         }
       }
       
-      const response = await fetch("http://localhost:5000/task5/api/users/conversations/list", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/users/conversations/list`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Cache-Control": "no-cache",
@@ -118,7 +118,7 @@ export const ChatProvider = ({ children }) => {
         }
       }
       
-      const response = await fetch(`http://localhost:5000/task5/api/chats/${userId}?limit=200`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/chats/${userId}?limit=200`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -255,7 +255,7 @@ export const ChatProvider = ({ children }) => {
       setCurrentUser(user);
 
       // 🔥 AUTO-FIX: Fetch fresh user data on mount
-      fetch("http://localhost:5000/task5/api/auth/me", {
+      fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => res.json())
@@ -268,7 +268,7 @@ export const ChatProvider = ({ children }) => {
       })
       .catch(err => console.error("Failed to refresh user data:", err));
 
-      const newSocket = io("http://localhost:5000", {
+      const newSocket = io(import.meta.env.VITE_API_BASE_URL, {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: Infinity,
@@ -559,7 +559,7 @@ export const ChatProvider = ({ children }) => {
   const deleteMessage = async (messageId, deleteForEveryone = false) => {
     try {
       const token = localStorage.getItem("chatToken");
-      const response = await fetch(`http://localhost:5000/task5/api/chats/${messageId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/chats/${messageId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
