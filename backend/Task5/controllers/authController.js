@@ -137,9 +137,65 @@ const getMe = async (req, res) => {
   }
 };
 
+// ================= GOOGLE LOGIN =================
+const googleLogin = async (req, res) => {
+  try {
+    const { name, email, profilePicture } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new user if doesn't exist
+      user = await User.create({
+        name,
+        email,
+        password: Math.random().toString(36).slice(-10), // Dummy password
+        profilePicture,
+        authType: "google",
+      });
+    } else {
+      // Update existing user with Google info if needed
+      user.profilePicture = profilePicture || user.profilePicture;
+      user.isOnline = true;
+      user.lastSeen = new Date();
+      await user.save();
+    }
+
+    const token = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      message: "Google login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        isOnline: user.isOnline,
+        authType: user.authType,
+      },
+    });
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during Google login",
+    });
+  }
+};
+
 module.exports = {
   signup,
   login,
   logout,
   getMe,
+  googleLogin,
 };

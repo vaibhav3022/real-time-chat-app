@@ -86,8 +86,17 @@ const MessageBubble = ({ message, isOwn, getInitials, onForward }) => {
       >
         {/* Avatar - Only for received messages */}
         {!isOwn && (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 border border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xs flex-shrink-0 mr-2 mb-1">
-            {getInitials(message.senderId?.name || "U")}
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100 border border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xs flex-shrink-0 mr-2 mb-1">
+            {message.senderId?.profilePicture ? (
+              <img
+                src={message.senderId.profilePicture}
+                alt={message.senderId.name}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              getInitials(message.senderId?.name || "U")
+            )}
           </div>
         )}
 

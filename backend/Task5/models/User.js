@@ -47,6 +47,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    authType: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
   },
   { timestamps: true }
 );

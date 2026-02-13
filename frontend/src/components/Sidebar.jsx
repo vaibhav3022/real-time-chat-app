@@ -287,8 +287,17 @@ const Sidebar = ({ onSelectChat }) => {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center space-x-3 min-w-0">
               <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white font-bold text-lg shadow-inner">
-                  {getInitials(currentUser?.name)}
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                  {currentUser?.profilePicture ? (
+                    <img
+                      src={currentUser.profilePicture}
+                      alt={currentUser.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    getInitials(currentUser?.name)
+                  )}
                 </div>
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-purple-600 shadow-sm"></div>
               </div>
@@ -396,8 +405,16 @@ const Sidebar = ({ onSelectChat }) => {
                             className="w-full flex items-center space-x-3 p-3 transition-all hover:bg-white"
                         >
                             <div className="relative flex-shrink-0">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                                    {getInitials(conv.name)}
+                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                    {conv.profilePicture ? (
+                                      <img
+                                        src={conv.profilePicture}
+                                        alt={conv.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      getInitials(conv.name)
+                                    )}
                                 </div>
                                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
                                     {conv.unreadCount}
@@ -474,13 +491,21 @@ const Sidebar = ({ onSelectChat }) => {
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base shadow-sm ring-2 ring-white transition-all transform group-hover:scale-105 ${
+                      className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden font-bold text-base shadow-sm ring-2 ring-white transition-all transform group-hover:scale-105 ${
                         isOnline 
                           ? "bg-gradient-to-br from-emerald-400 to-teal-500 text-white" 
                           : "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-600"
                       }`}
                     >
-                      {getInitials(user.name)}
+                      {user.profilePicture ? (
+                        <img
+                          src={user.profilePicture}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        getInitials(user.name)
+                      )}
                     </div>
                     {isOnline && (
                       <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm ring-1 ring-emerald-50"></div>

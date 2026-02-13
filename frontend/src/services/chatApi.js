@@ -26,6 +26,15 @@ export const authApi = {
     return await response.json();
   },
 
+  googleLogin: async (name, email, profilePicture) => {
+    const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, profilePicture }),
+    });
+    return await response.json();
+  },
+
   login: async (email, password) => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",

@@ -164,12 +164,21 @@ const ChatWindow = ({ onBack }) => {
           </button>
           
           <div className="relative flex-shrink-0">
-            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white ${
+            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white ${
                 userStatus.isOnline 
                 ? "bg-gradient-to-br from-emerald-400 to-teal-500" 
                 : "bg-gradient-to-br from-gray-400 to-gray-500"
             }`}>
-              {getInitials(selectedUser.name)}
+              {selectedUser.profilePicture ? (
+                <img
+                  src={selectedUser.profilePicture}
+                  alt={selectedUser.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                getInitials(selectedUser.name)
+              )}
             </div>
             {userStatus.isOnline && (
                 <div className="absolute bottom-0 right-0 w-2.5 h-2.5 md:w-3 md:h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
@@ -251,8 +260,16 @@ const ChatWindow = ({ onBack }) => {
         {/* Typing Indicator Bubble */}
         {userStatus.typing && (
            <div className="flex items-center space-x-2 mb-2 animate-fade-in pl-2">
-              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                  {getInitials(selectedUser.name)}
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                  {selectedUser.profilePicture ? (
+                    <img
+                      src={selectedUser.profilePicture}
+                      alt={selectedUser.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    getInitials(selectedUser.name)
+                  )}
               </div>
               <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex space-x-1">
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
