@@ -11,20 +11,21 @@ const ChatLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
 
+  /* ================= GOOGLE LOGIN ================= */
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      
+
       const response = await authApi.googleLogin(
         user.displayName,
         user.email,
@@ -34,82 +35,45 @@ const ChatLoginPage = () => {
       if (response.success) {
         localStorage.setItem("chatToken", response.token);
         localStorage.setItem("chatUser", JSON.stringify(response.user));
-        
-        // Clear any old chat cache
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('chat_') && !key.includes('sound')) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
+
+        clearChatCache();
         navigate("/chatapp", { replace: true });
       } else {
         setError(response.message || "Google authentication failed");
       }
     } catch (err) {
       console.error("Google Auth Error:", err);
-      setError("Failed to sign in with Google. Please try again.");
+      setError("Failed to sign in with Google.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ FIXED: Redirect if already logged in (prevents URL manipulation)
+  /* ================= AUTH CHECK ================= */
   useEffect(() => {
     const token = localStorage.getItem("chatToken");
     const user = localStorage.getItem("chatUser");
-    
+
     if (token && user) {
       try {
         const userData = JSON.parse(user);
-        if (userData.id && userData.name && userData.email) {
-          console.log("🔒 Already authenticated, redirecting to chat...");
-          // Use replace to prevent back button from returning to login
+        if (userData.id) {
           navigate("/chatapp", { replace: true });
         }
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        // If data is corrupted, clear it
+      } catch {
         localStorage.removeItem("chatToken");
         localStorage.removeItem("chatUser");
       }
     }
   }, [navigate]);
 
-  // ✅ Check authentication on mount and visibility change
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem("chatToken");
-      const user = localStorage.getItem("chatUser");
-      
-      if (token && user) {
-        try {
-          const userData = JSON.parse(user);
-          if (userData.id) {
-            navigate("/chatapp", { replace: true });
-          }
-        } catch (error) {
-          console.error("Auth check error:", error);
-        }
-      }
-    };
-
-    // Check when page becomes visible (user switches back to tab)
-    document.addEventListener('visibilitychange', checkAuth);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', checkAuth);
-    };
-  }, [navigate]);
-
+  /* ================= FORM CHANGE ================= */
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError("");
   };
 
+  /* ================= SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -117,207 +81,175 @@ const ChatLoginPage = () => {
 
     try {
       let response;
-      
+
       if (isLogin) {
         response = await authApi.login(formData.email, formData.password);
       } else {
-        response = await authApi.signup(formData.name, formData.email, formData.password);
+        response = await authApi.signup(
+          formData.name,
+          formData.email,
+          formData.password
+        );
       }
 
       if (response.success) {
         if (isLogin) {
-          // Login - save token and navigate to chat
           localStorage.setItem("chatToken", response.token);
           localStorage.setItem("chatUser", JSON.stringify(response.user));
-          
-          // Clear any old chat cache
-          const keysToRemove = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('chat_') && !key.includes('sound')) {
-              keysToRemove.push(key);
-            }
-          }
-          keysToRemove.forEach(key => localStorage.removeItem(key));
-          
-          console.log("✅ Login successful, redirecting...");
-          
-          // Use replace to prevent back button
+          clearChatCache();
           navigate("/chatapp", { replace: true });
         } else {
-          // Signup - just show success and switch to login
-          setIsLogin(true);
-          setError("");
-          setFormData({ name: "", email: formData.email, password: "" });
-          // Show success message
           alert("Account created successfully! Please login.");
+          setIsLogin(true);
         }
       } else {
         setError(response.message || "Authentication failed");
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
-      console.error("Auth error:", err);
+      console.error(err);
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Handle back button click
-  const handleBackClick = () => {
-    // Clear any partial login data
-    const token = localStorage.getItem("chatToken");
-    if (!token) {
-      // Only navigate back if not logged in
-      navigate(-1);
-    }
+  /* ================= CLEAR CACHE ================= */
+  const clearChatCache = () => {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith("chat_") && !key.includes("sound")) {
+        localStorage.removeItem(key);
+      }
+    });
   };
 
+  /* ================= UI ================= */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4 relative">
-      {/* Back Button - Only show if not logged in */}
-      <button
-        onClick={handleBackClick}
-        className="absolute top-6 left-6 flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        <span className="font-medium">Back</span>
-      </button>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 py-12 px-4 relative overflow-y-auto custom-scrollbar">
 
-      <div className="w-full max-w-md">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-4">
-            <MessageCircle className="w-10 h-10 text-purple-600" />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2">ChatFlow</h1>
-          <p className="text-white/80">Connect with friends instantly</p>
-        </div>
+  
 
-        {/* Login/Signup Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              {isLogin ? "Welcome Back!" : "Create Account"}
-            </h2>
-            <p className="text-gray-500 mt-1">
-              {isLogin ? "Login to continue chatting" : "Sign up to start chatting"}
-            </p>
-          </div>
+      <div className="w-full max-w-md py-8">
+
+       
+
+        {/* Card */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-10 mb-8 w-full border border-white/20 relative overflow-hidden group">
+          {/* Subtle light effect */}
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-purple-500/20 transition-all duration-700"></div>
+
+          <h2 className="text-3xl font-black text-center text-gray-900 mb-2">
+            {isLogin ? "Welcome Back!" : "Create Account"}
+          </h2>
+
+          <p className="text-center text-gray-500 mb-8 font-medium">
+            {isLogin ? "Login to continue chatting" : "Sign up to start chatting"}
+          </p>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-3 animate-shake">
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name field (only for signup) */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Enter your name"
-                    required={!isLogin}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+              <div className="relative group">
+                <User className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Full Name"
+                  required
+                  className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all hover:border-purple-300 bg-gray-50/50 focus:bg-white"
+                />
               </div>
             )}
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Email Address"
+                required
+                className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all hover:border-purple-300 bg-gray-50/50 focus:bg-white"
+              />
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Enter your password"
-                  required
-                  minLength={6}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              {!isLogin && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Password must be at least 6 characters
-                </p>
-              )}
+            <div className="relative group">
+              <Lock className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password"
+                required
+                minLength={6}
+                className="w-full pl-12 pr-14 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all hover:border-purple-300 bg-gray-50/50 focus:bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-4 text-gray-400 hover:text-purple-500 transition-colors"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+              </button>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+              className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   <span>Processing...</span>
                 </div>
               ) : (
-                isLogin ? "Login" : "Sign Up"
+                isLogin ? "Login Now" : "Create Account"
               )}
             </button>
 
-            {/* Divider */}
-            <div className="relative my-6">
+            <div className="text-center text-sm font-medium text-gray-600 pt-2">
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError("");
+                  setFormData({ name: "", email: "", password: "" });
+                }}
+                className="ml-2 text-purple-600 font-bold hover:text-purple-700 underline-offset-4 hover:underline transition-all"
+              >
+                {isLogin ? "Sign Up Free" : "Login Here"}
+              </button>
+            </div>
+
+            <div className="relative py-4">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-gray-100"></div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold">
+                <span className="px-3 bg-white text-gray-400">Or continue with</span>
               </div>
             </div>
 
-            {/* Google Login Button */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-4 bg-white border border-gray-200 text-gray-700 py-3.5 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 shadow-sm hover:shadow-md disabled:opacity-50"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -335,49 +267,17 @@ const ChatLoginPage = () => {
                   fill="#EA4335"
                 />
               </svg>
-              Sign in with Google
+              <span>Sign in with Google</span>
             </button>
+
           </form>
-
-          {/* Toggle Login/Signup */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError("");
-                  setFormData({ name: "", email: "", password: "" });
-                }}
-                className="text-purple-600 font-semibold hover:underline"
-              >
-                {isLogin ? "Sign Up" : "Login"}
-              </button>
-            </p>
-          </div>
-
-          {/* Additional Info */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Secure Login</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Encrypted</span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-6 text-center text-white/70 text-sm">
-          <p>© 2024 ChatFlow. All rights reserved.</p>
-          <p className="mt-2">
-            By logging in, you agree to our Terms of Service and Privacy Policy
-          </p>
+        {/* Footer info */}
+        <div className="text-center text-white/70 text-sm font-medium">
+          <p>© 2026 ChatFlow. Secure, Fast, and Reliable.</p>
         </div>
+
       </div>
     </div>
   );
