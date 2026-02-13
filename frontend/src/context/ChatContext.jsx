@@ -76,21 +76,6 @@ export const ChatProvider = ({ children }) => {
       if (data.success) {
         let conversations = data.conversations || [];
         
-        // 🔥 FATAL FIX: Force unread count to 0 if we are currently chatting with this user
-        // This overrides any server-side race conditions where DB hasn't updated "seen" yet
-        const currentSelected = selectedUserRef.current;
-        const currentSelectedId = currentSelected ? (currentSelected._id || currentSelected.userId || currentSelected.id) : null;
-
-        if (currentSelectedId) {
-            conversations = conversations.map(c => {
-                if (String(c.userId) === String(currentSelectedId)) {
-                    console.log(`🛡️ Force clearing unread count for open chat: ${c.name}`);
-                    return { ...c, unreadCount: 0 };
-                }
-                return c;
-            });
-        }
-
         setConversations(conversations);
         
         // Recalculate total unread based on our corrected list
@@ -227,7 +212,7 @@ export const ChatProvider = ({ children }) => {
           lastMessage: message.messageType === 'image' ? '📷 Image' : message.messageType === 'voice' ? '🎤 Voice Note' : message.message,
           lastMessageTime: message.createdAt,
           lastMessageStatus: isChatOpen && !isFromCurrentUser ? 'seen' : message.status,
-          unreadCount: (isFromCurrentUser || isChatOpen) ? 0 : (conv.unreadCount || 0) + 1
+          unreadCount: (isFromCurrentUser) ? 0 : (conv.unreadCount || 0) + 1
         };
         
         // Move to top
@@ -309,9 +294,9 @@ export const ChatProvider = ({ children }) => {
            
            // Also update conversation last message status
            setConversations(prev => prev.map(c => {
-               if (String(c.userId) === String(senderId)) {
-                   return { ...c, lastMessageStatus: 'seen', unreadCount: 0 };
-               }
+                if (String(c.userId) === String(senderId)) {
+                   return { ...c, lastMessageStatus: 'seen' };
+                }
                return c;
            }));
         }

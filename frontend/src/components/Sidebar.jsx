@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { LogOut, Search, X, MessageCircle, Bell, User, Shield, Volume2, VolumeX, AlertCircle, Check, XCircle } from "lucide-react";
+import { LogOut, Search, X, MessageCircle, Bell, User, Shield, Volume2, VolumeX, AlertCircle, Check } from "lucide-react";
 import { useChatContext } from "../context/ChatContext";
 import { authApi } from "../services/chatApi";
 import { useNavigate } from "react-router-dom";
@@ -25,7 +25,7 @@ const Sidebar = ({ onSelectChat }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutInProgress, setLogoutInProgress] = useState(false);
   
-  const [showNotifications, setShowNotifications] = useState(false);
+  // const [showNotifications, setShowNotifications] = useState(false); // Removed for inline section
   // ✅ FIXED: Sound state with proper initialization
   const [playSound, setPlaySound] = useState(() => {
     const saved = localStorage.getItem('chat_sound_enabled');
@@ -63,8 +63,6 @@ const Sidebar = ({ onSelectChat }) => {
       fetchAllUsers();
     };
 
-    // We can use the socket from context if we expose it, or listen to a window event
-    // Since ChatContext handles the socket event, let's make ChatContext dispatch a window event
     window.addEventListener('userStatusUpdate', handleStatusUpdate);
 
     return () => {
@@ -145,9 +143,13 @@ const Sidebar = ({ onSelectChat }) => {
     
     // Optional: Play a test sound when enabling
     if (newSoundState) {
-      setTimeout(() => {
-        playNotificationSound();
-      }, 200);
+        try {
+            const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg"); 
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log(e));
+        } catch (e) {
+            console.error(e);
+        }
     }
   };
 
@@ -179,31 +181,6 @@ const Sidebar = ({ onSelectChat }) => {
       day: "numeric",
     });
   };
-
-  // Real-time last seen formatting
-  const formatLastSeen = useMemo(() => {
-    return (lastSeen, isOnline) => {
-      if (isOnline) return "Online";
-      if (!lastSeen) return "Offline";
-      
-      const now = new Date();
-      const seenDate = new Date(lastSeen);
-      const diffMs = now - seenDate;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMins / 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
-      
-      return seenDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    };
-  }, [lastRefresh]);
 
   // Filter users based on search
   const filteredUsers = useMemo(() => {
@@ -244,8 +221,6 @@ const Sidebar = ({ onSelectChat }) => {
     conversations.forEach(c => convMap.set(c.userId, c));
     
     // 2. Merge allUsers into a unified list
-    // - If user is in conversation, use conversation data (has unread count etc)
-    // - If not, use user data from allUsers
     const unifiedList = allUsers.map(user => {
         const userId = user._id || user.userId;
         if (convMap.has(userId)) {
@@ -282,7 +257,6 @@ const Sidebar = ({ onSelectChat }) => {
       const timeA = new Date(a.lastMessageTime || a.lastSeen || 0).getTime();
       const timeB = new Date(b.lastMessageTime || b.lastSeen || 0).getTime();
       
-      // If times are essentially zero (never chatted, never seen), sort by name
       if (timeA === 0 && timeB === 0) {
         return (a.name || "").localeCompare(b.name || "");
       }
@@ -302,447 +276,307 @@ const Sidebar = ({ onSelectChat }) => {
   }, [allUsers, conversations, onlineUsers, currentUser]);
 
   return (
-    <>
-      <div className="w-full md:w-80 lg:w-96 bg-white border-r border-gray-200 flex flex-col h-full">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <div className="relative flex-shrink-0">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-purple-600 font-bold text-lg shadow-lg">
+    <div className="w-full md:w-80 lg:w-96 bg-white border-r border-gray-100 flex flex-col h-full shadow-md z-20">
+      {/* Header with Gradient */}
+      <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-5 shadow-lg relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-black opacity-10 rounded-full blur-xl"></div>
+
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center space-x-3 min-w-0">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white font-bold text-lg shadow-inner">
                   {getInitials(currentUser?.name)}
                 </div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
+                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-purple-600 shadow-sm"></div>
               </div>
-              <div className="text-white flex-1 min-w-0">
-                <h2 className="font-semibold text-base truncate">
+              <div className="text-white min-w-0">
+                <h2 className="font-semibold text-lg truncate tracking-tight">
                   {currentUser?.name || "Loading..."}
                 </h2>
-                <div className="flex items-center space-x-1 text-sm text-white/90">
+                <div className="flex items-center space-x-2 text-xs text-white/80 font-medium">
+                  <span className="bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/10">
+                    Online
+                  </span>
                   {totalUnreadCount > 0 && (
-                    <span className="bg-white/30 px-1.5 py-0.5 rounded text-xs">
-                      {totalUnreadCount} unread
+                    <span className="bg-rose-500/90 text-white px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                      {totalUnreadCount} new
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-1 flex-shrink-0">
-              {/* Refresh Button */}
-              <button
-                onClick={() => {
-                  console.log("🔄 Manual refresh triggered");
-                  fetchConversations(true);
-                  fetchAllUsers();
-                }}
-                className="p-2 rounded-full bg-white/10 text-white/80 hover:bg-white/20 transition-all"
-                title="Refresh Connection"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              {/* ✅ FIXED: Sound Toggle Button */}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1">
               <button
                 onClick={toggleSound}
                 className={`p-2 rounded-full transition-all duration-200 ${
                   playSound 
-                    ? 'bg-white/30 text-white hover:bg-white/40' 
-                    : 'bg-white/10 text-white/50 hover:bg-white/20'
+                    ? 'bg-white/20 text-white hover:bg-white/30 shadow-sm' 
+                    : 'bg-white/5 text-white/50 hover:bg-white/10'
                 }`}
-                title={playSound ? "Mute notifications (ON)" : "Unmute notifications (OFF)"}
+                title={playSound ? "Mute" : "Unmute"}
               >
-                {playSound ? (
-                  <Volume2 className="w-5 h-5" />
-                ) : (
-                  <VolumeX className="w-5 h-5" />
-                )}
+                {playSound ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </button>
               
-              {/* Notification Dropdown */}
+              {/* Bell Icon now acts as a jump-to-top or indicator */}
               <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 rounded-full hover:bg-white/20 transition relative"
+                <div
+                  className={`p-2 rounded-full transition-all duration-200 ${
+                    totalUnreadCount > 0 ? 'bg-white/20 text-white animate-pulse' : 'bg-white/10 text-white/50'
+                  }`}
+                  title="Notifications"
                 >
-                  <Bell className="w-5 h-5 text-white" />
+                  <Bell className="w-5 h-5" />
                   {notificationCount > 0 && (
-                    <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center border-2 border-purple-600">
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center border-2 border-purple-500 shadow-sm">
                       {notificationCount > 99 ? "99+" : notificationCount}
                     </span>
                   )}
-                </button>
-
-                {showNotifications && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowNotifications(false)}
-                    ></div>
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 overflow-hidden border border-gray-100 animate-fadeIn">
-                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="font-semibold text-gray-700 text-sm">Notifications</h3>
-                        {notificationCount > 0 && (
-                          <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium">
-                            {notificationCount} new
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="max-h-80 overflow-y-auto">
-                        {conversations.filter(c => c.unreadCount > 0).length === 0 ? (
-                          <div className="p-8 text-center text-gray-400">
-                            <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                            <p className="text-sm">No new notifications</p>
-                          </div>
-                        ) : (
-                          conversations.filter(c => c.unreadCount > 0).map(conv => (
-                            <button
-                              key={conv.userId}
-                              onClick={() => {
-                                handleSelectUser(conv);
-                                setShowNotifications(false);
-                              }}
-                              className="w-full text-left p-3 hover:bg-purple-50 transition border-b border-gray-50 flex items-start space-x-3 last:border-0"
-                            >
-                              <div className="relative flex-shrink-0">
-                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 text-sm">
-                                  {getInitials(conv.name)}
-                                </div>
-                                {conv.isOnline && (
-                                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-800 text-sm truncate">{conv.name}</p>
-                                <p className="text-xs text-gray-500 truncate font-medium">
-                                  {conv.lastMessage || "Sent a message"}
-                                </p>
-                                <p className="text-[10px] text-gray-400 mt-1">
-                                  {formatTime(conv.lastMessageTime)}
-                                </p>
-                              </div>
-                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                      
-                      {notificationCount > 0 && (
-                        <div className="bg-gray-50 p-2 text-center border-t border-gray-100">
-                          <button 
-                            onClick={() => setShowNotifications(false)}
-                            className="text-xs text-purple-600 font-medium hover:underline"
-                          >
-                            Close
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                </div>
               </div>
-              
-              {/* Logout button */}
+
               <button
                 onClick={handleLogoutClick}
-                disabled={logoutInProgress}
-                className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition disabled:opacity-50"
-                title={logoutInProgress ? "Logging out..." : "Logout"}
+                className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition text-white/80 hover:text-white"
+                title="Logout"
               >
-                {logoutInProgress ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <LogOut className="w-5 h-5 text-white" />
-                )}
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <div className="flex items-center bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2">
-              <Search className="w-5 h-5 text-white/80 mr-2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search users..."
-                className="w-full bg-transparent text-white placeholder-white/60 focus:outline-none text-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="ml-2"
-                >
-                  <X className="w-4 h-4 text-white/80 hover:text-white" />
-                </button>
-              )}
+          {/* Modern Search Bar */}
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-indigo-100 group-focus-within:text-white transition-colors" />
             </div>
-          </div>
-          
-          {/* Security info */}
-          <div className="mt-3 flex items-center justify-between text-xs">
-            <div className="flex items-center space-x-1 text-white/70">
-              <Shield className="w-3 h-3" />
-              <span>End-to-end encrypted</span>
-            </div>
-            <div className="text-white/60">
-              {onlineUsers.size} online
-            </div>
-          </div>
-        </div>
-
-        {/* Users/Conversations List */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700">
-              {searchQuery ? "Search Results" : "Conversations"}
-              {!searchQuery && sortedConversations.length > 0 && (
-                <span className="ml-2 text-xs text-gray-500">
-                  ({sortedConversations.length})
-                </span>
-              )}
-            </h3>
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${onlineUsers.has(currentUser?.id) ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-              <span className="text-xs text-gray-500">
-                {onlineUsers.size} online
-              </span>
-            </div>
-          </div>
-
-          <div className="divide-y divide-gray-100">
-            {(searchQuery ? filteredUsers : sortedConversations).length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  {searchQuery ? (
-                    <User className="w-10 h-10 text-gray-400" />
-                  ) : (
-                    <MessageCircle className="w-10 h-10 text-gray-400" />
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">
-                  {searchQuery ? "No users found" : "No conversations yet"}
-                </p>
-                {!searchQuery && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Start a conversation by searching for users
-                  </p>
-                )}
-              </div>
-            ) : (
-              (searchQuery ? filteredUsers : sortedConversations).map((user) => {
-                const userId = user.userId || user._id;
-                const isOnline = onlineUsers.has(userId);
-                const isSelected = selectedUser?._id === userId;
-                const unreadCount = user.unreadCount || 0;
-                const hasUnread = unreadCount > 0;
-
-                return (
-                  <button
-                    key={userId}
-                    onClick={() => handleSelectUser(user)}
-                    className={`w-full flex items-center space-x-3 p-4 hover:bg-gray-50 transition-all duration-200 ${
-                      isSelected 
-                        ? "bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500" 
-                        : ""
-                    } ${hasUnread ? 'bg-blue-50/50' : ''}`}
-                  >
-                    {/* Avatar */}
-                    <div className="relative flex-shrink-0">
-                      <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-base shadow-sm ${
-                          isOnline 
-                            ? "bg-gradient-to-br from-green-500 to-emerald-600" 
-                            : "bg-gradient-to-br from-gray-400 to-gray-500"
-                        }`}
-                      >
-                        {getInitials(user.name)}
-                      </div>
-                      {isOnline && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                      )}
-                    </div>
-
-                    {/* User info */}
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-gray-800 truncate text-base">
-                          {user.name}
-                          {hasUnread && (
-                            <span className="ml-2 inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                          )}
-                        </h3>
-                        {(user.lastMessageTime || user.lastSeen) && (
-                          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
-                            {formatTime(user.lastMessageTime || user.lastSeen)}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        {user.lastMessage ? (
-                          <>
-                            <p className="text-sm text-gray-600 truncate flex-1 mr-2">
-                              {user.lastMessage.length > 30
-                                ? user.lastMessage.substring(0, 30) + "..."
-                                : user.lastMessage}
-                            </p>
-                            {hasUnread && (
-                              <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-[20px] flex items-center justify-center">
-                                {unreadCount > 99 ? "99+" : unreadCount}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                            {!user.lastMessage && !searchQuery && (
-                              <span className="text-xs text-gray-400">Start chat</span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 bg-gray-50 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${onlineUsers.size > 0 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-              <p className="text-xs text-gray-600">
-                {onlineUsers.size} online • {sortedConversations.length} chats
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-10 py-2.5 border-none rounded-xl leading-5 bg-white/10 text-white placeholder-indigo-100 focus:outline-none focus:bg-white/20 focus:ring-2 focus:ring-white/30 transition-all shadow-inner backdrop-blur-sm sm:text-sm"
+              placeholder="Search conversations..."
+            />
+            {searchQuery && (
               <button
-                onClick={toggleSound}
-                className={`text-xs flex items-center space-x-1 px-2 py-1 rounded ${
-                  playSound ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-50'
-                }`}
-                title={playSound ? "Sound ON" : "Sound OFF"}
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
               >
-                {playSound ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
-                <span>{playSound ? "ON" : "OFF"}</span>
+                <X className="h-4 w-4 text-indigo-100 hover:text-white cursor-pointer" />
               </button>
-              <p className="text-xs text-gray-500">ChatFlow</p>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Custom Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden border border-purple-200">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-red-600 to-orange-500 p-6 text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                  <AlertCircle className="w-7 h-7" />
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto bg-gray-50 custom-scrollbar">
+        {/* Inline Unread Section */}
+        {!searchQuery && notificationCount > 0 && (
+            <div className="mb-4 animate-fade-in">
+                <div className="sticky top-0 z-10 bg-indigo-50/90 backdrop-blur-md border-b border-indigo-100 px-4 py-2 flex items-center justify-between shadow-sm">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center">
+                        <Bell className="w-3 h-3 mr-1.5" />
+                        Unread Messages
+                    </h3>
+                    <span className="bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                        {notificationCount} TOTAL
+                    </span>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold">Confirm Logout</h3>
-                  <p className="text-white/90 text-sm">
-                    Are you sure you want to logout from ChatFlow?
-                  </p>
+                <div className="divide-y divide-indigo-50/50 bg-indigo-50/20">
+                    {conversations.filter(c => c.unreadCount > 0).map(conv => (
+                        <button
+                            key={`unread-${conv.userId}`}
+                            onClick={() => handleSelectUser(conv)}
+                            className="w-full flex items-center space-x-3 p-3 transition-all hover:bg-white"
+                        >
+                            <div className="relative flex-shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                    {getInitials(conv.name)}
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                                    {conv.unreadCount}
+                                </div>
+                            </div>
+                            <div className="flex-1 min-w-0 text-left">
+                                <p className="font-bold text-gray-900 text-sm truncate">{conv.name}</p>
+                                <p className="text-xs text-indigo-600 truncate font-medium">New message received</p>
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-medium italic">
+                                {formatTime(conv.lastMessageTime)}
+                            </div>
+                        </button>
+                    ))}
                 </div>
-              </div>
+                <div className="h-0.5 bg-indigo-100/50"></div>
             </div>
-            
-            {/* Body */}
-            <div className="p-6">
-              <div className="mb-6">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start space-x-3">
-                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-amber-800 mb-1">Important Note:</h4>
-                      <ul className="text-sm text-amber-700 space-y-1">
-                        <li className="flex items-center">
-                          <Check className="w-3 h-3 mr-2" />
-                          All your messages are saved on the server
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="w-3 h-3 mr-2" />
-                          Your status will be updated to offline
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="w-3 h-3 mr-2" />
-                          You'll need to login again to continue chatting
-                        </li>
-                      </ul>
+        )}
+
+        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            {searchQuery ? "Search Results" : "Recent Chats"}
+          </h3>
+          <div className="flex items-center space-x-1.5 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+            <div className={`w-1.5 h-1.5 rounded-full ${onlineUsers.size > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className="text-[10px] font-bold text-emerald-700">
+              {onlineUsers.size} ONLINE
+            </span>
+          </div>
+        </div>
+
+        <div className="divide-y divide-gray-50">
+          {(searchQuery ? filteredUsers : sortedConversations).length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-10 text-center h-64">
+              <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                {searchQuery ? (
+                  <User className="w-8 h-8 text-gray-400" />
+                ) : (
+                  <MessageCircle className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+              <p className="text-gray-500 font-medium">
+                {searchQuery ? "No users found" : "No conversations yet"}
+              </p>
+              {!searchQuery && (
+                <p className="text-xs text-gray-400 mt-2 max-w-[200px]">
+                  Use the search bar to find friends and start chatting
+                </p>
+              )}
+            </div>
+          ) : (
+            (searchQuery ? filteredUsers : sortedConversations).map((user) => {
+              const userId = user.userId || user._id;
+              const isOnline = onlineUsers.has(userId);
+              const isSelected = selectedUser?._id === userId;
+              const unreadCount = user.unreadCount || 0;
+              const hasUnread = unreadCount > 0;
+
+              return (
+                <button
+                  key={userId}
+                  onClick={() => handleSelectUser(user)}
+                  className={`w-full flex items-center space-x-3.5 p-3.5 transition-all duration-200 group relative overflow-hidden ${
+                    isSelected 
+                      ? "bg-white z-10 shadow-md border-l-4 border-l-purple-500" 
+                      : "hover:bg-white hover:shadow-sm border-l-4 border-l-transparent"
+                  }`}
+                >
+                  {/* Active State Background Gradient (Subtle) */}
+                  {isSelected && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-transparent pointer-events-none"></div>
+                  )}
+
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base shadow-sm ring-2 ring-white transition-all transform group-hover:scale-105 ${
+                        isOnline 
+                          ? "bg-gradient-to-br from-emerald-400 to-teal-500 text-white" 
+                          : "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-600"
+                      }`}
+                    >
+                      {getInitials(user.name)}
+                    </div>
+                    {isOnline && (
+                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm ring-1 ring-emerald-50"></div>
+                    )}
+                  </div>
+
+                  {/* User info */}
+                  <div className="flex-1 min-w-0 text-left relative z-10">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <h3 className={`font-semibold text-sm truncate transition-colors ${
+                        isSelected ? 'text-purple-700' : 'text-gray-900 group-hover:text-gray-800'
+                      } ${hasUnread ? 'font-bold' : ''}`}>
+                        {user.name}
+                      </h3>
+                      {(user.lastMessageTime || user.lastSeen) && (
+                        <span className={`text-[10px] font-medium flex-shrink-0 transition-colors ${
+                          hasUnread ? 'text-purple-600' : 'text-gray-400 group-hover:text-gray-500'
+                        }`}>
+                          {formatTime(user.lastMessageTime || user.lastSeen)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      {user.lastMessage ? (
+                        <>
+                          <p className={`text-xs truncate flex-1 mr-2 transition-colors ${
+                            hasUnread ? 'text-gray-800 font-semibold' : 'text-gray-500 group-hover:text-gray-600'
+                          }`}>
+                            {user.lastMessageStatus === 'seen' && user.userId === currentUser.id && ( // Check if *I* sent it and it was seen
+                                 <Check className="w-3 h-3 inline-block mr-1 text-blue-500" />
+                            )}
+                            {user.lastMessage.length > 35
+                              ? user.lastMessage.substring(0, 35) + "..."
+                              : user.lastMessage}
+                          </p>
+                          {hasUnread && (
+                            <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-scale-in">
+                              {unreadCount > 99 ? "99+" : unreadCount}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-gray-300'}`}></span>
+                          <p className="text-xs text-gray-400 italic">
+                            {isOnline ? "Active now" : "Offline"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center space-x-3 text-sm text-gray-600">
-                  <div className="flex-1 bg-gray-50 p-3 rounded-lg">
-                    <p className="font-medium mb-1">Active Conversations:</p>
-                    <p>{sortedConversations.length} chats • {onlineUsers.size} online</p>
-                  </div>
-                  <div className="flex-1 bg-gray-50 p-3 rounded-lg">
-                    <p className="font-medium mb-1">Unread Messages:</p>
-                    <p>{totalUnreadCount} unread messages</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                <button
-                  onClick={confirmLogout}
-                  disabled={logoutInProgress}
-                  className="w-full py-3 bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold rounded-lg hover:from-red-700 hover:to-orange-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50"
-                >
-                  {logoutInProgress ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Logging out...</span>
-                    </>
-                  ) : (
-                    <>
-                      <LogOut className="w-5 h-5" />
-                      <span>Yes, Logout Now</span>
-                    </>
-                  )}
                 </button>
-                
-                <button
-                  onClick={cancelLogout}
-                  disabled={logoutInProgress}
-                  className="w-full py-3 bg-gray-100 text-gray-800 font-semibold rounded-lg hover:bg-gray-200 transition-all border border-gray-300 flex items-center justify-center space-x-2"
-                >
-                  <XCircle className="w-5 h-5" />
-                  <span>Cancel, Stay in Chat</span>
-                </button>
-                
-                <div className="pt-3 border-t border-gray-200 text-center">
-                  <p className="text-xs text-gray-500">
-                    You can also logout using the Logout button in the navigation bar
-                  </p>
-                </div>
-              </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Logout Confirm Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-gray-100 transform transition-all scale-100">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-6 h-6 text-red-500" />
             </div>
-            
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center">
-                ChatFlow Security • Logout Protection Enabled
-              </p>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Logout?</h3>
+            <p className="text-gray-500 text-center text-sm mb-6">
+              Are you sure you want to end your session? You wont receive notifications until you login again.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelLogout}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                disabled={logoutInProgress}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-medium hover:shadow-lg hover:to-rose-700 transition flex items-center justify-center text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {logoutInProgress ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    ...
+                  </>
+                ) : (
+                  "Logout"
+                )}
+              </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
