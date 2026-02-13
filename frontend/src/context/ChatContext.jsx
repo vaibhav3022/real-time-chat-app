@@ -76,6 +76,18 @@ export const ChatProvider = ({ children }) => {
       if (data.success) {
         let conversations = data.conversations || [];
         
+        // 🔥 Map media URLs to human-readable strings if backend didn't do it
+        conversations = conversations.map(c => {
+          if (!c.lastMessage) return c;
+          
+          let preview = c.lastMessage;
+          if (c.messageType === 'image' || c.lastMessage.match(/\.(jpg|jpeg|png|gif|webp)$|^data:image/i)) preview = '📷 Image';
+          else if (c.messageType === 'voice' || c.lastMessage.match(/\.(ogg|mp3|wav|m4a)$/i)) preview = '🎤 Voice Note';
+          else if (c.messageType === 'file' || c.lastMessage.match(/^\/uploads\/file-/)) preview = '📁 File';
+          
+          return { ...c, lastMessage: preview };
+        });
+
         setConversations(conversations);
         
         // Recalculate total unread based on our corrected list
@@ -207,9 +219,16 @@ export const ChatProvider = ({ children }) => {
         // Update existing conversation
         const conv = updated[conversationIndex];
         
+        const getMessagePreview = (msg) => {
+          if (msg.messageType === 'image' || msg.message?.match(/\.(jpg|jpeg|png|gif|webp)$|^data:image/i)) return '📷 Image';
+          if (msg.messageType === 'voice' || msg.message?.match(/\.(ogg|mp3|wav|m4a)$/i)) return '🎤 Voice Note';
+          if (msg.messageType === 'file' || msg.message?.match(/^\/uploads\/file-/)) return '📁 File';
+          return msg.message;
+        };
+
         updated[conversationIndex] = {
           ...conv,
-          lastMessage: message.messageType === 'image' ? '📷 Image' : message.messageType === 'voice' ? '🎤 Voice Note' : message.message,
+          lastMessage: getMessagePreview(message),
           lastMessageTime: message.createdAt,
           lastMessageStatus: isChatOpen && !isFromCurrentUser ? 'seen' : message.status,
           unreadCount: (isFromCurrentUser) ? 0 : (conv.unreadCount || 0) + 1
