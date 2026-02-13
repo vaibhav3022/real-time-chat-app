@@ -34,8 +34,8 @@ const ChatProtectedRoute = ({ children }) => {
 
   // ✅ COMPREHENSIVE NAVIGATION BLOCKING - Works immediately after login
   useEffect(() => {
-    if (isAuthenticated && location.pathname.includes('/chatbot2') && 
-        !location.pathname.includes('/chatbot2/login')) {
+    if (isAuthenticated && location.pathname.includes('/chatapp') && 
+        !location.pathname.includes('/login')) {
       
       console.log("🔒 Chat protection activated IMMEDIATELY");
       isBlockingRef.current = true;
@@ -50,7 +50,7 @@ const ChatProtectedRoute = ({ children }) => {
           window.history, 
           { isChatPage: true, protected: true, timestamp: Date.now() }, 
           "", 
-          "/chatbot2"
+          "/chatapp"
         );
       };
       
@@ -61,7 +61,7 @@ const ChatProtectedRoute = ({ children }) => {
       
       // ✅ 1. Override history.pushState
       window.history.pushState = function(state, title, url) {
-        if (url && !url.toString().includes('/chatbot2') && isBlockingRef.current) {
+        if (url && !url.toString().includes('/chatapp') && isBlockingRef.current) {
           console.log("🚫 BLOCKED pushState to:", url);
           setShowLogoutModal(true);
           addChatToHistory();
@@ -72,7 +72,7 @@ const ChatProtectedRoute = ({ children }) => {
       
       // ✅ 2. Override history.replaceState
       window.history.replaceState = function(state, title, url) {
-        if (url && !url.toString().includes('/chatbot2') && isBlockingRef.current) {
+        if (url && !url.toString().includes('/chatapp') && isBlockingRef.current) {
           console.log("🚫 BLOCKED replaceState to:", url);
           setShowLogoutModal(true);
           addChatToHistory();
@@ -118,7 +118,7 @@ const ChatProtectedRoute = ({ children }) => {
             const url = new URL(link.href, window.location.origin);
             
             // Block same-origin non-chat links
-            if (url.origin === window.location.origin && !url.pathname.includes('/chatbot2')) {
+            if (url.origin === window.location.origin && !url.pathname.includes('/chatapp')) {
               e.preventDefault();
               e.stopImmediatePropagation();
               console.log("🚫 BLOCKED link click to:", url.pathname);
@@ -149,7 +149,7 @@ const ChatProtectedRoute = ({ children }) => {
         if (currentPath !== lastPathname) {
           console.log("🔍 URL changed:", lastPathname, "→", currentPath);
           
-          if (!currentPath.includes('/chatbot2') && isBlockingRef.current) {
+          if (!currentPath.includes('/chatapp') && isBlockingRef.current) {
             console.log("🚫 UNAUTHORIZED URL CHANGE DETECTED!");
             
             // Force restore chat page
@@ -157,7 +157,7 @@ const ChatProtectedRoute = ({ children }) => {
               window.history,
               { isChatPage: true, protected: true },
               "",
-              "/chatbot2"
+              "/chatapp"
             );
             
             setShowLogoutModal(true);
@@ -234,7 +234,7 @@ const ChatProtectedRoute = ({ children }) => {
     
     // Navigate to login
     setTimeout(() => {
-      window.location.href = "/chatbot2/login";
+      window.location.href = "/login";
     }, 100);
   };
 
@@ -244,8 +244,8 @@ const ChatProtectedRoute = ({ children }) => {
     backAttemptCount.current = 0;
     
     // Ensure we're on chat page
-    if (!window.location.pathname.includes('/chatbot2')) {
-      window.history.replaceState({ isChatPage: true }, "", "/chatbot2");
+    if (!window.location.pathname.includes('/chatapp')) {
+      window.history.replaceState({ isChatPage: true }, "", "/chatapp");
     }
   };
 
@@ -263,7 +263,7 @@ const ChatProtectedRoute = ({ children }) => {
 
   // Redirect if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/chatbot2/login" replace state={{ from: location }} />;
+    return <Navigate to="/login" replace />;
   }
 
   return (

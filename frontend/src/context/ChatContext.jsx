@@ -27,13 +27,15 @@ export const ChatProvider = ({ children }) => {
   const messagesRef = useRef(messages);
   const conversationsRef = useRef(conversations);
   const onlineUsersRef = useRef(onlineUsers);
+  const selectedUserRef = useRef(selectedUser);
 
   // Update refs when state changes
   useEffect(() => {
     messagesRef.current = messages;
     conversationsRef.current = conversations;
     onlineUsersRef.current = onlineUsers;
-  }, [messages, conversations, onlineUsers]);
+    selectedUserRef.current = selectedUser;
+  }, [messages, conversations, onlineUsers, selectedUser]);
 
   // ✅ Real-time fetch conversations
   const fetchConversations = useCallback(async (force = false) => {
@@ -72,13 +74,33 @@ export const ChatProvider = ({ children }) => {
       const data = await response.json();
       
       if (data.success) {
-        setConversations(data.conversations || []);
-        setTotalUnreadCount(data.totalUnread || 0);
-        setNotificationCount(data.totalUnread || 0);
+        let conversations = data.conversations || [];
+        
+        // 🔥 FATAL FIX: Force unread count to 0 if we are currently chatting with this user
+        // This overrides any server-side race conditions where DB hasn't updated "seen" yet
+        const currentSelected = selectedUserRef.current;
+        const currentSelectedId = currentSelected ? (currentSelected._id || currentSelected.userId || currentSelected.id) : null;
+
+        if (currentSelectedId) {
+            conversations = conversations.map(c => {
+                if (String(c.userId) === String(currentSelectedId)) {
+                    console.log(`🛡️ Force clearing unread count for open chat: ${c.name}`);
+                    return { ...c, unreadCount: 0 };
+                }
+                return c;
+            });
+        }
+
+        setConversations(conversations);
+        
+        // Recalculate total unread based on our corrected list
+        const calculatedUnread = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
+        setTotalUnreadCount(calculatedUnread);
+        setNotificationCount(calculatedUnread);
         
         // Update online users set
         const onlineSet = new Set();
-        data.conversations?.forEach(conv => {
+        conversations.forEach(conv => {
           if (conv.isOnline || conv.isActive) {
             onlineSet.add(conv.userId);
           }
@@ -87,8 +109,8 @@ export const ChatProvider = ({ children }) => {
         
         // Cache results
         localStorage.setItem(cacheKey, JSON.stringify({
-          conversations: data.conversations,
-          totalUnread: data.totalUnread,
+          conversations: conversations,
+          totalUnread: calculatedUnread,
           timestamp: data.timestamp
         }));
         localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
@@ -182,7 +204,19 @@ export const ChatProvider = ({ children }) => {
       const updated = [...prev];
       const conversationIndex = updated.findIndex(c => c.userId === (isFromCurrentUser ? receiverId : senderId));
       
-      const isChatOpen = selectedUser?._id === (isFromCurrentUser ? receiverId : senderId);
+      // 🔥 FIX: Robust ID comparison
+      const currentSelected = selectedUserRef.current;
+      const currentSelectedId = currentSelected ? (currentSelected._id || currentSelected.userId || currentSelected.id) : null;
+      const targetId = isFromCurrentUser ? receiverId : senderId;
+      
+      const areIdsEqual = (id1, id2) => {
+         if (!id1 || !id2) return false;
+         return String(id1) === String(id2);
+      };
+      
+      const isChatOpen = areIdsEqual(currentSelectedId, targetId);
+      
+      console.log(`📨 Unread Check: Sender=${senderId}, Selected=${currentSelectedId}, IsOpen=${isChatOpen}`);
 
       if (conversationIndex !== -1) {
         // Update existing conversation
@@ -211,13 +245,46 @@ export const ChatProvider = ({ children }) => {
     localStorage.removeItem(`${cacheKey}_timestamp`);
     
     // Trigger sound notification if not from current user AND chat is NOT open
-    const isChatOpen = selectedUser?._id === senderId;
+    
+    // 🔥 FIX: Robust ID comparison for sound/seen logic
+    const currentSelected = selectedUserRef.current;
+    
+    // Get ID safely
+    const currentSelectedId = currentSelected ? (currentSelected._id || currentSelected.userId || currentSelected.id) : null;
+    
+    // Helper to compare IDs safely
+    const areIdsEqual = (id1, id2) => {
+      if (!id1 || !id2) return false;
+      return String(id1) === String(id2);
+    };
+
+    const isChatOpen = areIdsEqual(currentSelectedId, senderId);
+    
+    console.log(`🔔 Check: Sender=${senderId}, Selected=${currentSelectedId}, IsOpen=${isChatOpen}`);
+
     if (!isFromCurrentUser) {
       if (options.playSound && !isChatOpen) {
-        // Dispatch custom event for sound
-        window.dispatchEvent(new CustomEvent('newMessageNotification', {
-          detail: { playSound: true, senderName: message.senderId?.name }
-        }));
+        // Check mute status
+        const soundEnabled = localStorage.getItem('chat_sound_enabled');
+        const shouldPlay = soundEnabled !== null ? soundEnabled === 'true' : true;
+        
+        if (shouldPlay) {
+            try {
+              // Reliable hosted URL for soft pop sound (shorter, lighter)
+              // Using a very standard notification sound
+              const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg"); 
+              audio.volume = 0.7;
+              const playPromise = audio.play();
+              
+              if (playPromise !== undefined) {
+                  playPromise.catch(error => {
+                      console.log("Audio play failed (Autoplay blocked?):", error);
+                  });
+              }
+            } catch (err) {
+              console.error("Sound error:", err);
+            }
+        }
       }
 
       // 🔥 IMMEDIATE SEEN IF CHAT IS OPEN
@@ -228,7 +295,7 @@ export const ChatProvider = ({ children }) => {
           receiverId: currentUser.id || currentUser._id,
         });
         
-        // Optimistically update local message status
+        // Optimistically update local message status for ME (the receiver)
         if (message.status !== 'seen') {
            setMessages(prev => {
              const updated = { ...prev };
@@ -239,10 +306,18 @@ export const ChatProvider = ({ children }) => {
              }
              return updated;
            });
+           
+           // Also update conversation last message status
+           setConversations(prev => prev.map(c => {
+               if (String(c.userId) === String(senderId)) {
+                   return { ...c, lastMessageStatus: 'seen', unreadCount: 0 };
+               }
+               return c;
+           }));
         }
       }
     }
-  }, [currentUser?.id, selectedUser?._id, fetchConversations, socket]);
+  }, [currentUser?.id, fetchConversations, socket]);
 
   // ✅ Initialize socket connection
   useEffect(() => {

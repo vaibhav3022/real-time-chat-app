@@ -11,12 +11,12 @@ function App() {
       <Routes>
 
         {/* Default route redirect */}
-        <Route path="/" element={<Navigate to="/chatbot2/login" />} />
+        <Route path="/" element={<Navigate to="/login" />} />
 
-        <Route path="/chatbot2/login" element={<ChatLoginPage />} />
+        <Route path="/login" element={<ChatLoginPage />} />
 
         <Route
-          path="/chatbot2"
+          path="/chatapp"
           element={
             <ChatProtectedRoute>
               <ChatHomePage />

@@ -130,7 +130,7 @@ const ChatInput = () => {
 
           try {
             const token = localStorage.getItem("chatToken");
-            const res = await fetch("http://localhost:5000/task5/api/chats/upload", {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/chats/upload`, {
               method: "POST",
               headers: { Authorization: `Bearer ${token}` },
               body: formData
@@ -184,7 +184,7 @@ const ChatInput = () => {
 
     try {
       const token = localStorage.getItem("chatToken");
-      const res = await fetch("http://localhost:5000/task5/api/chats/upload", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/chats/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -232,7 +232,7 @@ const ChatInput = () => {
 
     try {
       const token = localStorage.getItem("chatToken");
-      const res = await fetch("http://localhost:5000/task5/api/chats/upload", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/chats/upload`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData

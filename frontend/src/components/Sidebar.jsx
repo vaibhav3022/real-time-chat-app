@@ -56,47 +56,6 @@ const Sidebar = ({ onSelectChat }) => {
     return () => clearInterval(interval);
   }, [fetchConversations]);
 
-  // ✅ FIXED: Play notification sound function
-  const playNotificationSound = () => {
-    // Always check latest localStorage value
-    const soundEnabled = localStorage.getItem('chat_sound_enabled');
-    const shouldPlay = soundEnabled !== null ? soundEnabled === 'true' : true;
-    
-    if (!shouldPlay) {
-      console.log("🔇 Sound muted, not playing notification");
-      return;
-    }
-    
-    try {
-      const audio = new Audio('https://assets.mixkit.co/active/preview/mixkit-correct-answer-tone-2870.mp3');
-      audio.volume = 0.3;
-      audio.play().catch(e => console.log("Audio play failed:", e));
-    } catch (error) {
-      console.log("Notification sound error:", error);
-    }
-  };
-
-  // ✅ FIXED: Listen for new messages - removed playSound dependency
-  useEffect(() => {
-    const handleNewMessage = (event) => {
-      if (event.detail && event.detail.playSound) {
-        // Check localStorage directly, not state
-        const soundEnabled = localStorage.getItem('chat_sound_enabled');
-        const shouldPlay = soundEnabled !== null ? soundEnabled === 'true' : true;
-        
-        if (shouldPlay) {
-          playNotificationSound();
-        }
-      }
-    };
-    
-    window.addEventListener('newMessageNotification', handleNewMessage);
-    
-    return () => {
-      window.removeEventListener('newMessageNotification', handleNewMessage);
-    };
-  }, []); // No dependencies - always use fresh localStorage value
-
   // 🔥 Listen for user status updates to refresh list
   useEffect(() => {
     const handleStatusUpdate = () => {
@@ -115,7 +74,7 @@ const Sidebar = ({ onSelectChat }) => {
 
   const fetchAllUsers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/task5/api/users?limit=100", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/task5/api/users?limit=100`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("chatToken")}`,
         },
@@ -157,14 +116,14 @@ const Sidebar = ({ onSelectChat }) => {
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
       // Navigate to login
-      navigate("/chatbot2/login", { replace: true });
+      navigate("/login", { replace: true });
       
     } catch (error) {
       console.error("Logout error:", error);
       // Still clear local storage and navigate
       localStorage.removeItem("chatToken");
       localStorage.removeItem("chatUser");
-      navigate("/chatbot2/login", { replace: true });
+      navigate("/login", { replace: true });
     } finally {
       setLogoutInProgress(false);
       setShowLogoutConfirm(false);
@@ -278,23 +237,59 @@ const Sidebar = ({ onSelectChat }) => {
     }
   };
 
-  // Sort conversations
+  // Sort conversations and include all users
   const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => {
-      // Unread first
+    // 1. Create a map of existing conversations for quick lookup
+    const convMap = new Map();
+    conversations.forEach(c => convMap.set(c.userId, c));
+    
+    // 2. Merge allUsers into a unified list
+    // - If user is in conversation, use conversation data (has unread count etc)
+    // - If not, use user data from allUsers
+    const unifiedList = allUsers.map(user => {
+        const userId = user._id || user.userId;
+        if (convMap.has(userId)) {
+            return convMap.get(userId);
+        }
+        // Transform standard user to conversation-like object
+        return {
+            userId: userId,
+            _id: userId,
+            name: user.name,
+            email: user.email,
+            profilePicture: user.profilePicture,
+            lastMessage: null,
+            lastMessageTime: null,
+            unreadCount: 0,
+            isOnline: onlineUsers.has(userId),
+            lastSeen: user.lastSeen
+        };
+    });
+
+    // 3. Sort logic
+    return unifiedList.sort((a, b) => {
+      // Priority 1: Unread count
       const unreadA = a.unreadCount || 0;
       const unreadB = b.unreadCount || 0;
       if (unreadA !== unreadB) return unreadB - unreadA;
       
-      // Online users next
-      if (a.isOnline !== b.isOnline) return b.isOnline ? 1 : -1;
+      // Priority 2: Online status
+      const onlineA = onlineUsers.has(a.userId || a._id);
+      const onlineB = onlineUsers.has(b.userId || b._id);
+      if (onlineA !== onlineB) return onlineB ? 1 : -1;
       
-      // Then by last message time
+      // Priority 3: Last Message Time / Last Active
       const timeA = new Date(a.lastMessageTime || a.lastSeen || 0).getTime();
       const timeB = new Date(b.lastMessageTime || b.lastSeen || 0).getTime();
+      
+      // If times are essentially zero (never chatted, never seen), sort by name
+      if (timeA === 0 && timeB === 0) {
+        return (a.name || "").localeCompare(b.name || "");
+      }
+
       return timeB - timeA;
     });
-  }, [conversations, lastRefresh]);
+  }, [conversations, allUsers, onlineUsers, lastRefresh]);
 
   // Debug log
   useEffect(() => {

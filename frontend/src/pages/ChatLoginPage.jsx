@@ -27,7 +27,7 @@ const ChatLoginPage = () => {
         if (userData.id && userData.name && userData.email) {
           console.log("🔒 Already authenticated, redirecting to chat...");
           // Use replace to prevent back button from returning to login
-          navigate("/chatbot2", { replace: true });
+          navigate("/chatapp", { replace: true });
         }
       } catch (error) {
         console.error("Error parsing user data:", error);
@@ -48,7 +48,7 @@ const ChatLoginPage = () => {
         try {
           const userData = JSON.parse(user);
           if (userData.id) {
-            navigate("/chatbot2", { replace: true });
+            navigate("/chatapp", { replace: true });
           }
         } catch (error) {
           console.error("Auth check error:", error);
@@ -102,7 +102,7 @@ const ChatLoginPage = () => {
           console.log("✅ Login successful, redirecting...");
           
           // Use replace to prevent back button
-          navigate("/chatbot2", { replace: true });
+          navigate("/chatapp", { replace: true });
         } else {
           // Signup - just show success and switch to login
           setIsLogin(true);

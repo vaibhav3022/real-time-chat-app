@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Check, CheckCheck, Clock, Trash2, Copy, Forward } from "lucide-react";
 import { useChatContext } from "../context/ChatContext";
 
-const MessageBubble = ({ message, isOwn, getInitials }) => {
+const MessageBubble = ({ message, isOwn, getInitials, onForward }) => {
   const { deleteMessage } = useChatContext();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
@@ -67,7 +67,9 @@ const MessageBubble = ({ message, isOwn, getInitials }) => {
   };
 
   const handleForward = () => {
-    alert("Forward feature coming soon!");
+    if (onForward) {
+      onForward(message);
+    }
     setShowMenu(false);
   };
 
@@ -98,17 +100,17 @@ const MessageBubble = ({ message, isOwn, getInitials }) => {
             {message.messageType === 'image' ? (
               <div className="mb-1">
                 <img 
-                  src={`http://localhost:5000/task5${message.message}`} 
+                  src={`${import.meta.env.VITE_API_BASE_URL}/task5${message.message}`} 
                   alt="Shared image" 
                   className="rounded-lg max-w-full h-auto max-h-64 object-cover cursor-pointer hover:opacity-95 transition-opacity"
-                  onClick={() => window.open(`http://localhost:5000/task5${message.message}`, '_blank')}
+                  onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/task5${message.message}`, '_blank')}
                 />
               </div>
             ) : message.messageType === 'voice' ? (
               <div className="flex items-center space-x-2 min-w-[200px] mb-1">
                 <audio 
                   controls 
-                  src={`http://localhost:5000/task5${message.message}`} 
+                  src={`${import.meta.env.VITE_API_BASE_URL}/task5${message.message}`} 
                   className="w-full max-w-[250px] h-8"
                 />
               </div>

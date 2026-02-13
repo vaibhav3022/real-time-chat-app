@@ -6,12 +6,15 @@ import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import { useNavigate } from "react-router-dom";
 
+import ForwardModal from "./ForwardModal";
+
 const ChatWindow = ({ onBack }) => {
   const {
     selectedUser,
     messages,
     getMessagesForUser,
     setMessagesForUser,
+    sendMessage,
     currentUser,
     onlineUsers,
     typingUsers,
@@ -29,6 +32,8 @@ const ChatWindow = ({ onBack }) => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [lastSeenRefresh, setLastSeenRefresh] = useState(Date.now());
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [messageToForward, setMessageToForward] = useState(null);
   const [userStatus, setUserStatus] = useState({
     isOnline: false,
     lastSeen: null,
@@ -158,6 +163,44 @@ const ChatWindow = ({ onBack }) => {
   };
 
   // ✅ Auto-refresh last seen every minute
+  // ✅ Handle Forward Init
+  const handleForwardMessage = (message) => {
+    setMessageToForward(message);
+    setShowForwardModal(true);
+  };
+
+  // ✅ Process Forward Sending
+  const handleSendForward = async (originalMessage, targetUserIds) => {
+    if (!originalMessage || !targetUserIds.length) return;
+    
+    // We can iterate and send
+    targetUserIds.forEach(userId => {
+        // Construct message based on type
+        if (originalMessage.messageType === 'image' || originalMessage.messageType === 'voice') {
+            // For media, we send the URL as message content, and type as 'image'/'voice'
+            // The sendMessage in context/ChatInput currently handles text. 
+            // We need to ensure we pass the right type.
+            // The context `sendMessage` might need an update or we emit directly.
+            // Let's use the socket directly for now to be safe, matching ChatInput logic
+             if (socket && currentUser) {
+              socket.emit("message:send", {
+                senderId: currentUser.id || currentUser._id,
+                receiverId: userId,
+                message: originalMessage.message, // This is the URL
+                messageType: originalMessage.messageType
+              });
+            }
+        } else {
+             // Text message
+             sendMessage(userId, originalMessage.message);
+        }
+    });
+
+    console.log(`Forwarded message to ${targetUserIds.length} users`);
+    setShowForwardModal(false);
+    setMessageToForward(null);
+  };
+
   useEffect(() => {
     if (selectedUser) {
       const interval = setInterval(() => {
@@ -386,6 +429,7 @@ const ChatWindow = ({ onBack }) => {
                 message={message}
                 isOwn={message.senderId?._id === currentUser.id}
                 getInitials={getInitials}
+                onForward={handleForwardMessage}
               />
             ))}
 
@@ -425,6 +469,18 @@ const ChatWindow = ({ onBack }) => {
 
       {/* Chat Input */}
       <ChatInput />
+      
+      {/* Forward Modal */}
+      {showForwardModal && messageToForward && (
+        <ForwardModal
+            message={messageToForward}
+            onClose={() => {
+                setShowForwardModal(false);
+                setMessageToForward(null);
+            }}
+            onSend={handleSendForward}
+        />
+      )}
     </div>
   );
 };

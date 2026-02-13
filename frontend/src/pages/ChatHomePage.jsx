@@ -9,7 +9,7 @@ const ChatHomePage = () => {
 
   return (
    <ChatProvider>
-      <div className="h-screen w-full flex overflow-hidden bg-gray-100">
+      <div className="h-dvh w-full flex overflow-hidden bg-gray-100">
         {/* Sidebar - Mobile: show only when chat is not open, Desktop: always show */}
         <div className={`${showChat ? 'hidden' : 'flex'} md:flex w-full md:w-80 lg:w-96 h-full`}>
           <Sidebar onSelectChat={() => setShowChat(true)} />
