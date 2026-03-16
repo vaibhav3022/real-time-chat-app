@@ -6,6 +6,7 @@ const http = require("http");
 dotenv.config();
 
 const connectDB = require("./config/db");
+const seedAIBot = require("./Task5/utils/seedAIBot");
 const { initializeSocket } = require("./socket");
 
 // Task apps
@@ -22,7 +23,9 @@ const app = express();
 const server = http.createServer(app);
 
 // DB
-connectDB();
+connectDB().then(() => {
+  seedAIBot(); // Seed AI agent after DB connects
+});
 
 // Middleware
 app.use(cors({

@@ -43,6 +43,8 @@ const ChatWindow = ({ onBack }) => {
     };
   }, [selectedUser, onlineUsers, typingUsers, lastSeenUpdates]);
 
+  const isAIBot = selectedUser?.email === 'bot@meta.ai';
+
   // Fetch messages
   useEffect(() => {
     if (selectedUser) {
@@ -185,13 +187,15 @@ const ChatWindow = ({ onBack }) => {
             )}
           </div>
 
-          <div className="flex flex-col flex-1 min-w-0">
-            <h2 className="font-bold text-gray-900 truncate text-sm md:text-lg leading-tight">
+          <div className="flex flex-col flex-1 min-w-0 pr-2">
+            <h2 className={`font-bold truncate text-sm md:text-lg leading-tight ${isAIBot ? 'bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 text-transparent bg-clip-text' : 'text-gray-900'} max-w-[150px] sm:max-w-[200px] md:max-w-full block`}>
               {selectedUser.name}
             </h2>
-            <div className="flex items-center space-x-1.5 h-4">
+            <div className="flex items-center space-x-1.5 h-4 mt-0.5">
               {userStatus.typing ? (
                  <span className="text-xs font-bold text-indigo-600 animate-pulse">Typing...</span>
+              ) : isAIBot ? (
+                 <span className="text-[10px] sm:text-xs font-bold text-purple-600 px-2 py-0.5 bg-purple-50 rounded-full border border-purple-100 whitespace-nowrap">AI Assistant</span>
               ) : userStatus.isOnline ? (
                  <span className="text-xs font-medium text-emerald-600">Online</span>
               ) : (
@@ -202,12 +206,16 @@ const ChatWindow = ({ onBack }) => {
         </div>
 
         <div className="flex items-center gap-0.5 md:gap-2 flex-shrink-0">
-            <button className="p-2.5 rounded-full hover:bg-gray-100/80 text-gray-500 transition-all active:scale-95">
-                <Phone className="w-5 h-5" />
-            </button>
-            <button className="p-2.5 rounded-full hover:bg-gray-100/80 text-gray-500 transition-all active:scale-95 hidden sm:block">
-                <Video className="w-5 h-5" />
-            </button>
+            {!isAIBot && (
+              <>
+                <button className="p-2.5 rounded-full hover:bg-gray-100/80 text-gray-500 transition-all active:scale-95">
+                    <Phone className="w-5 h-5" />
+                </button>
+                <button className="p-2.5 rounded-full hover:bg-gray-100/80 text-gray-500 transition-all active:scale-95 hidden sm:block">
+                    <Video className="w-5 h-5" />
+                </button>
+              </>
+            )}
             <button 
                 className="p-2.5 rounded-full hover:bg-gray-100/80 text-gray-500 transition-all active:scale-95"
                 onClick={() => setShowHeaderMenu(!showHeaderMenu)}

@@ -472,6 +472,7 @@ const Sidebar = ({ onSelectChat }) => {
               const isSelected = selectedUser?._id === userId;
               const unreadCount = user.unreadCount || 0;
               const hasUnread = unreadCount > 0;
+              const isAIBot = user.email === "bot@meta.ai";
 
               return (
                 <button
@@ -517,10 +518,10 @@ const Sidebar = ({ onSelectChat }) => {
                     <div className="flex items-center justify-between mb-0.5">
                       <h3 className={`font-semibold text-sm truncate transition-colors ${
                         isSelected ? 'text-purple-700' : 'text-gray-900 group-hover:text-gray-800'
-                      } ${hasUnread ? 'font-bold' : ''}`}>
+                      } ${hasUnread ? 'font-bold' : ''} ${isAIBot ? 'bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 text-transparent bg-clip-text' : ''}`}>
                         {user.name}
                       </h3>
-                      {(user.lastMessageTime || user.lastSeen) && (
+                      {(user.lastMessageTime || user.lastSeen) && !isAIBot && (
                         <span className={`text-[10px] font-medium flex-shrink-0 transition-colors ${
                           hasUnread ? 'text-purple-600' : 'text-gray-400 group-hover:text-gray-500'
                         }`}>
@@ -550,9 +551,9 @@ const Sidebar = ({ onSelectChat }) => {
                         </>
                       ) : (
                         <div className="flex items-center space-x-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-gray-300'}`}></span>
-                          <p className="text-xs text-gray-400 italic">
-                            {isOnline ? "Active now" : "Offline"}
+                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-gray-300'} ${isAIBot ? 'bg-gradient-to-r from-blue-400 to-purple-500' : ''}`}></span>
+                          <p className={`text-xs italic ${isAIBot ? 'text-purple-500 font-medium' : 'text-gray-400'}`}>
+                            {isAIBot ? "Always here to help" : isOnline ? "Active now" : "Offline"}
                           </p>
                         </div>
                       )}

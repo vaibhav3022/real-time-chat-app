@@ -157,12 +157,14 @@ const googleLogin = async (req, res) => {
         name,
         email,
         password: Math.random().toString(36).slice(-10), // Dummy password
-        profilePicture,
+        profilePicture: profilePicture || "",
         authType: "google",
       });
     } else {
-      // Update existing user with Google info if needed
-      user.profilePicture = profilePicture || user.profilePicture;
+      // Update existing user with Google info if needed (only if provided and different)
+      if (profilePicture && profilePicture !== user.profilePicture) {
+        user.profilePicture = profilePicture;
+      }
       user.isOnline = true;
       user.lastSeen = new Date();
       await user.save();

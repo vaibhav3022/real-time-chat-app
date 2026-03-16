@@ -231,7 +231,7 @@ export const ChatProvider = ({ children }) => {
           lastMessage: getMessagePreview(message),
           lastMessageTime: message.createdAt,
           lastMessageStatus: isChatOpen && !isFromCurrentUser ? 'seen' : message.status,
-          unreadCount: (isFromCurrentUser) ? 0 : (conv.unreadCount || 0) + 1
+          unreadCount: isFromCurrentUser || isChatOpen ? 0 : (conv.unreadCount || 0) + 1
         };
         
         // Move to top
@@ -300,25 +300,23 @@ export const ChatProvider = ({ children }) => {
         });
         
         // Optimistically update local message status for ME (the receiver)
-        if (message.status !== 'seen') {
-           setMessages(prev => {
-             const updated = { ...prev };
-             if (updated[senderId]) {
-               updated[senderId] = updated[senderId].map(m => 
-                 m._id === message._id ? { ...m, status: 'seen' } : m
-               );
+        setMessages(prev => {
+          const updated = { ...prev };
+          if (updated[senderId]) {
+            updated[senderId] = updated[senderId].map(m => 
+              m._id === message._id ? { ...m, status: 'seen' } : m
+            );
+          }
+          return updated;
+        });
+        
+        // Also update conversation last message status
+        setConversations(prev => prev.map(c => {
+             if (String(c.userId) === String(senderId)) {
+                return { ...c, lastMessageStatus: 'seen', unreadCount: 0 };
              }
-             return updated;
-           });
-           
-           // Also update conversation last message status
-           setConversations(prev => prev.map(c => {
-                if (String(c.userId) === String(senderId)) {
-                   return { ...c, lastMessageStatus: 'seen' };
-                }
-               return c;
-           }));
-        }
+            return c;
+        }));
       }
     }
   }, [currentUser?.id, fetchConversations, socket]);
@@ -438,7 +436,7 @@ export const ChatProvider = ({ children }) => {
         }
         
         // Update selected user
-        if (selectedUser && selectedUser._id === data.userId) {
+        if (selectedUserRef.current && String(selectedUserRef.current._id) === String(data.userId)) {
           setSelectedUser(prev => ({
             ...prev,
             isOnline: data.isOnline,

@@ -29,7 +29,7 @@ const ChatLoginPage = () => {
       const response = await authApi.googleLogin(
         user.displayName,
         user.email,
-        user.photoURL
+        user.photoURL || ""
       );
 
       if (response.success) {

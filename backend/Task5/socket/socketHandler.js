@@ -1,8 +1,15 @@
 const Chat = require("../models/Chat");
 const User = require("../models/User");
+const { GoogleGenAI } = require("@google/genai");
 
 // Store user connections: userId -> Set of socketIds
 const userConnections = new Map();
+
+// Initialize Gemini API (if key is missing, it will throw when used, which is fine since we check it)
+let aiClient = null;
+if (process.env.GEMINI_API_KEY) {
+  aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+}
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
@@ -58,6 +65,10 @@ module.exports = (io) => {
       try {
         const { senderId, receiverId, message, messageType } = data;
 
+        // Check if receiver is Meta AI Bot
+        const receiver = await User.findById(receiverId);
+        const isAIBot = receiver && receiver.email === "bot@meta.ai";
+
         // Create message in DB
         const newMessage = await Chat.create({
           senderId,
@@ -89,6 +100,78 @@ module.exports = (io) => {
           chat: messageData
         });
 
+        if (isAIBot) {
+          // AI Bot logic
+          // 1. Mark user message as delivered immediately
+          await Chat.findByIdAndUpdate(newMessage._id, { status: "delivered" });
+          io.to(`user:${senderId}`).emit("message:status", {
+            messageId: newMessage._id,
+            status: "delivered",
+          });
+
+          // 2. Emit typing indicator from AI to User
+          io.to(`user:${senderId}`).emit("user:typing", {
+            userId: receiverId,
+            isTyping: true,
+          });
+
+          // 3. Generate response using Gemini
+          let aiResponseText = "Sorry, I am offline right now.";
+          if (aiClient) {
+            try {
+              const response = await aiClient.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: message,
+              });
+              aiResponseText = response.text || "I don't have an answer to that.";
+            } catch (aiErr) {
+              console.error("Gemini API Error:", aiErr);
+              aiResponseText = "Oops! Something went wrong with my circuits.";
+            }
+          }
+
+          // 4. Save AI Response
+          const aiMessage = await Chat.create({
+            senderId: receiverId,
+            receiverId: senderId,
+            message: aiResponseText,
+            messageType: "text",
+            status: "delivered",
+          });
+
+          const populatedAiMessage = await Chat.findById(aiMessage._id)
+            .populate("senderId", "name email profilePicture")
+            .populate("receiverId", "name email");
+
+          const aiMessageData = {
+            _id: aiMessage._id,
+            ...populatedAiMessage.toObject(),
+            createdAt: aiMessage.createdAt,
+            updatedAt: aiMessage.updatedAt,
+            status: "delivered"
+          };
+
+          // 5. Stop typing indicator
+          io.to(`user:${senderId}`).emit("user:typing", {
+            userId: receiverId,
+            isTyping: false,
+          });
+
+          // 6. Send AI response to user
+          // Check if user is currently looking at this chat (we can guess by connections, but to be safe we'll emit to them)
+          io.to(`user:${senderId}`).emit("message:receive", {
+            chat: aiMessageData,
+            playSound: true,
+            senderName: receiver.name
+          });
+
+          // Wait a tiny bit and emit a "seen" read receipt back to the user to clear unread automatically if they are active
+          // This ensures the AI message is marked 'seen' if they are on the screen.
+          // Better yet, the frontend handles marking it seen automatically.
+          return; // Skip the rest of the standard receiver logic
+        }
+
+        // Standard user-to-user logic
         // Check if receiver has active connections
         const receiverConnections = userConnections.get(receiverId);
         if (receiverConnections && receiverConnections.size > 0) {

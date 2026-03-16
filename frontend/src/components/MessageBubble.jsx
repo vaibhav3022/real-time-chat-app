@@ -104,7 +104,9 @@ const MessageBubble = ({ message, isOwn, getInitials, onForward }) => {
         <div className={`relative px-4 py-2.5 shadow-md text-sm md:text-[15px] leading-relaxed transition-all duration-200 hover:shadow-lg ${
             isOwn
             ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-sm"
-            : "bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-tl-sm"
+            : message.senderId?.email === "bot@meta.ai"
+              ? "bg-gradient-to-br from-white to-purple-50 text-gray-800 border border-purple-100 rounded-2xl rounded-tl-sm shadow-purple-100" 
+              : "bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-tl-sm"
         }`}>
             
             {message.messageType === 'image' ? (
@@ -129,11 +131,16 @@ const MessageBubble = ({ message, isOwn, getInitials, onForward }) => {
                 />
               </div>
             ) : (
-                <p className="break-words whitespace-pre-wrap pb-2">{message.message}</p>
+                <div className="break-words whitespace-pre-wrap overflow-hidden pb-1 max-w-full">
+                  {message.message}
+                </div>
             )}
 
             {/* Time & Status */}
             <div className={`flex items-center justify-end space-x-1 mt-0.5 ${isOwn ? "text-indigo-100" : "text-gray-400"}`}>
+                {message.senderId?.email === "bot@meta.ai" && (
+                    <span className="text-[10px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500 mr-1 italic">Aura AI</span>
+                )}
                 <span className="text-[10px] font-medium opacity-90">
                     {formatTime(message.createdAt)}
                 </span>
