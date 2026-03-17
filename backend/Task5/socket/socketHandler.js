@@ -117,8 +117,11 @@ module.exports = (io) => {
 
           // 3. Generate response using Gemini
           let aiResponseText = "Sorry, I am offline right now.";
-          if (aiClient) {
+          if (process.env.GEMINI_API_KEY) {
             try {
+              if (!aiClient) {
+                aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+              }
               const response = await aiClient.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: message,
@@ -126,8 +129,11 @@ module.exports = (io) => {
               aiResponseText = response.text || "I don't have an answer to that.";
             } catch (aiErr) {
               console.error("Gemini API Error:", aiErr);
-              aiResponseText = "Oops! Something went wrong with my circuits.";
+              aiResponseText = "Oops! Something went wrong with my circuits: " + aiErr.message;
             }
+          } else {
+            console.log("❌ GEMINI_API_KEY is missing on the server!");
+            aiResponseText = "Sorry, my API key is missing on the server. Please add GEMINI_API_KEY in Render Environment Variables.";
           }
 
           // 4. Save AI Response
